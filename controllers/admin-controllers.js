@@ -17,8 +17,7 @@ const login = (req, res) => {
           res.status(500).json({ error: "Password comparison error" });
         } else if (isMatch) {
           res.status(200).json({
-            message: "Login successful",
-            data: response,
+            data: response[0],
             token: generateToken(response[0].id),
           });
         } else {

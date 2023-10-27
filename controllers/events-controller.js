@@ -5,7 +5,7 @@ const addevents = asyncHandler(async (req, res) => {
   const adminIdFromAuth = req.admin.id;
   const adminId = req.params.adminId;
 
-  const { title, description } = req.body;
+  const { title, description, publish, date } = req.body;
 
   if (!title || !description || !req.file) {
     res.status(400);
@@ -28,10 +28,11 @@ const addevents = asyncHandler(async (req, res) => {
         const lastname = results[0].lastname;
         const image = req.file.filename;
         const createdBy = `${firstname} , ${lastname}`;
-        const publish = 1;
+        const pub = publish === true ? 1 : 0;
+
         const query2 =
-          "INSERT INTO events (title, description, publish, createdBy, image) VALUES (?,?,?,?,?) ";
-        const values = [title, description, publish, createdBy, image];
+          "INSERT INTO events (title, description, publish, createdBy, image, eventsDate) VALUES (?,?,?,?,?,?) ";
+        const values = [title, description, pub, createdBy, image, date];
 
         db.query(query2, values, (err, results) => {
           if (err) {
