@@ -169,7 +169,7 @@ const editSingleAdminByMain = asyncHandler(async (req, res) => {
 
   if (!Array.isArray(updates) || updates.length === 0) {
     res.status(400); // Bad Request
-    throw new Error("Invalid or missing 'updates' data");
+    throw new Error("You can't submit empty fields");
   }
 
   let query =
@@ -203,7 +203,7 @@ const editSingleAdmin = asyncHandler(async (req, res) => {
   const updates = req.body;
   if (!Array.isArray(updates) || updates.length === 0) {
     res.status(400);
-    throw new Error("Invalid or missing 'updates' data");
+    throw new Error("You can't submit empty fields");
   }
 
   let query =
@@ -221,8 +221,18 @@ const editSingleAdmin = asyncHandler(async (req, res) => {
       console.error("Error updating admin info: " + err);
       res.status(500).json("Error updating admin info: " + err);
     } else {
-      console.log("Admin info updated successfully");
-      res.json(results);
+      db.query("SELECT * FROM admin WHERE ID = ?", [id], (err, results) => {
+        if (err) {
+          console.error("Error updating admin info: " + err);
+          res.status(500).json("Error updating admin info: " + err);
+        } else {
+          console.log("Admin info updated successfully");
+          res.status(200).json({
+            data: results[0],
+            token: generateToken(results[0].id),
+          });
+        }
+      });
     }
   });
 });
@@ -304,12 +314,11 @@ const changePasswordByMain = asyncHandler(async (req, res) => {
 
 const changePassword = asyncHandler(async (req, res) => {
   const adminId = req.admin.id;
-  const id = req.params.id;
   const singleAdminId = req.params.singleAdminId;
 
   const { oldPassword, newPassword } = req.body;
 
-  if (adminId != id) {
+  if (adminId != singleAdminId) {
     res.status(401);
     throw new Error("Not Authorized");
   }

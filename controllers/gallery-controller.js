@@ -75,7 +75,7 @@ const getSinglegallery = asyncHandler(async (req, res) => {
   const galleryId = req.params.galleryId;
 
   db.query(
-    "SELECT * FROM admin Where id = ? LIMIT 1",
+    "SELECT * FROM gallery Where id = ? LIMIT 1",
     [galleryId],
     (error, response) => {
       if (error) {
@@ -96,15 +96,14 @@ const editSinglegallery = asyncHandler(async (req, res) => {
     res.status(401);
     throw new Error("Not Authorized");
   }
-  const updates = req.body;
+  const updates = JSON.parse(req.body.updates);
   if (!Array.isArray(updates) || updates.length === 0) {
     res.status(400);
-    throw new Error("Invalid or missing 'updates' data");
+    throw new Error("You can't submit empty fields");
   }
   if (req.file) {
-    updates.push({ image: req.file.fieldname });
+    updates.push({ columnName: "image", newValue: req.file.filename });
   }
-
   let query =
     "UPDATE gallery SET " + updates.map((update) => `?? = ?`).join(", ");
   const values = updates.reduce(
@@ -117,8 +116,8 @@ const editSinglegallery = asyncHandler(async (req, res) => {
 
   db.query(query, values, (err, results) => {
     if (err) {
+      return res.status(500).json("Error updating admin info ");
       console.error("Error updating admin info: " + err);
-      res.status(500).json("Error updating admin info: " + err);
     } else {
       console.log("gallery info updated successfully");
       res.json(results);

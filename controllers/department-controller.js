@@ -100,7 +100,7 @@ const editSingleDepartment = asyncHandler(async (req, res) => {
   const updates = req.body;
   if (!Array.isArray(updates) || updates.length === 0) {
     res.status(400);
-    throw new Error("Invalid or missing 'updates' data");
+    throw new Error("You can't submit empty fields");
   }
   if (req.file) {
     updates.push({ image: req.file.fieldname });

@@ -37,7 +37,7 @@ routes.put(
   adminController.changePasswordByMain
 );
 routes.put(
-  "/update-single-admin-password-main/:singleAdminId/:id",
+  "/update-single-admin-password/:singleAdminId",
   ProtectRoute,
   adminController.changePassword
 );

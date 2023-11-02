@@ -8,13 +8,17 @@ const routes = express.Router();
 routes.post(
   "/:adminId",
   ProtectRoute,
-  imageStorageMiddlewear,
   academicCalenderController.addAcademicCalender
 );
 
 routes.get(
   "/published-academic-calender",
   academicCalenderController.getAllPublishedAcademicCalender
+);
+
+routes.get(
+  "/published-academic-calender/:year",
+  academicCalenderController.getAllPublishedAcademicCalenderYear
 );
 routes.get(
   "/unPublished-academic-calender",
@@ -36,9 +40,14 @@ routes.put(
   academicCalenderController.togglePublishState
 );
 routes.delete(
-  "/delete-academic-calender/:academicCalenderId/:adminId",
+  "/delete-academic-calender/:academicCalenderYear/:adminId",
   ProtectRoute,
   academicCalenderController.deleteSingleAcademicCalender
+);
+routes.delete(
+  "/delete-academic-calender-category/:academicCalenderId/:adminId",
+  ProtectRoute,
+  academicCalenderController.deleteSingleAcademicCalenderCategory
 );
 
 module.exports = routes;

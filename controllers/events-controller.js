@@ -6,6 +6,7 @@ const addevents = asyncHandler(async (req, res) => {
   const adminId = req.params.adminId;
 
   const { title, description, publish, date } = req.body;
+  console.log(req.body);
 
   if (!title || !description || !req.file) {
     res.status(400);
@@ -28,11 +29,10 @@ const addevents = asyncHandler(async (req, res) => {
         const lastname = results[0].lastname;
         const image = req.file.filename;
         const createdBy = `${firstname} , ${lastname}`;
-        const pub = publish === true ? 1 : 0;
 
         const query2 =
           "INSERT INTO events (title, description, publish, createdBy, image, eventsDate) VALUES (?,?,?,?,?,?) ";
-        const values = [title, description, pub, createdBy, image, date];
+        const values = [title, description, publish, createdBy, image, date];
 
         db.query(query2, values, (err, results) => {
           if (err) {
@@ -47,7 +47,7 @@ const addevents = asyncHandler(async (req, res) => {
 });
 
 const getAllPublishedevents = asyncHandler(async (req, res) => {
-  const query = "SELECT * FROM events WHERE publish = ?";
+  const query = "SELECT * FROM events ORDER BY createdAt DESC ";
   const values = [1];
 
   db.query(query, values, (error, result) => {
@@ -76,7 +76,7 @@ const getSingleevents = asyncHandler(async (req, res) => {
   const eventsId = req.params.eventsId;
 
   db.query(
-    "SELECT * FROM admin Where id = ? LIMIT 1",
+    "SELECT * FROM events Where id = ? ",
     [eventsId],
     (error, response) => {
       if (error) {
@@ -97,13 +97,14 @@ const editSingleevents = asyncHandler(async (req, res) => {
     res.status(401);
     throw new Error("Not Authorized");
   }
-  const updates = req.body;
+  console.log(req.body);
+  const updates = JSON.parse(req.body.updates);
   if (!Array.isArray(updates) || updates.length === 0) {
     res.status(400);
-    throw new Error("Invalid or missing 'updates' data");
+    throw new Error("You can't submit empty fields");
   }
   if (req.file) {
-    updates.push({ image: req.file.fieldname });
+    updates.push({ columnName: "image", newValue: req.file.filename });
   }
 
   let query =
@@ -144,9 +145,8 @@ const deleteSingleevents = asyncHandler(async (req, res) => {
     if (err) {
       console.error("Error deleting admin: " + err);
       res.status(500).json("Error deleting admin: " + err);
-    } else {
-      console.log("Admin deleted successfully");
-      res.json({ message: "Admin deleted successfully" });
+    } else if (results) {
+      res.status(200).json({ message: "Admin deleted successfully" });
     }
   });
 });

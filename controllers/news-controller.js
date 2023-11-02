@@ -74,17 +74,13 @@ const getAllUnPublishedNews = asyncHandler(async (req, res) => {
 const getSingleNews = asyncHandler(async (req, res) => {
   const newsId = req.params.newsId;
 
-  db.query(
-    "SELECT * FROM admin Where id = ? LIMIT 1",
-    [newsId],
-    (error, response) => {
-      if (error) {
-        res.status(400).json("database error");
-      } else {
-        res.status(200).json(response);
-      }
+  db.query("SELECT * FROM news Where id = ?", [newsId], (error, response) => {
+    if (error) {
+      res.status(400).json("database error");
+    } else {
+      res.status(200).json(response);
     }
-  );
+  });
 });
 
 const editSingleNews = asyncHandler(async (req, res) => {
@@ -96,13 +92,13 @@ const editSingleNews = asyncHandler(async (req, res) => {
     res.status(401);
     throw new Error("Not Authorized");
   }
-  const updates = req.body;
+  const updates = JSON.parse(req.body.updates);
   if (!Array.isArray(updates) || updates.length === 0) {
     res.status(400);
-    throw new Error("Invalid or missing 'updates' data");
+    throw new Error("You can't submit empty fields");
   }
   if (req.file) {
-    updates.push({ image: req.file.fieldname });
+    updates.push({ columnName: "image", newValue: req.file.filename });
   }
 
   let query = "UPDATE news SET " + updates.map((update) => `?? = ?`).join(", ");
@@ -119,12 +115,11 @@ const editSingleNews = asyncHandler(async (req, res) => {
       console.error("Error updating admin info: " + err);
       res.status(500).json("Error updating admin info: " + err);
     } else {
-      console.log("News info updated successfully");
+      console.log("news info updated successfully");
       res.json(results);
     }
   });
 });
-
 const deleteSingleNews = asyncHandler(async (req, res) => {
   const adminIdFromAuth = req.admin.id;
   const adminId = req.params.adminId;
@@ -137,6 +132,8 @@ const deleteSingleNews = asyncHandler(async (req, res) => {
 
   const query = "DELETE FROM news WHERE id = ?";
   const values = [newsId];
+
+  console.log(newsId);
 
   db.query(query, values, (err, results) => {
     if (err) {
