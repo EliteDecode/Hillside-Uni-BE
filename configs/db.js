@@ -3,10 +3,10 @@ const mysql = require("mysql2");
 const msg = "connection successfull";
 
 const db = mysql.createConnection({
-  host: "premium283.web-hosting.com",
-  user: "eimpywxv_hustdb",
-  password: ",Nc=esWslFNs",
-  database: "eimpywxv_hust",
+  host: process.env.dbHost,
+  user: process.env.dbUser,
+  password: process.env.dbPassword,
+  database: process.env.dbName,
 });
 
 const connectDb = () => {
