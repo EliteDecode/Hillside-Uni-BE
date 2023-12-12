@@ -13,6 +13,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 app.use("/hust/api/v1/admin", require("./routes/admin-route"));
+app.use("/hust/api/v1/test", require("./routes/test"));
 app.use("/hust/api/v1/news", require("./routes/news-route"));
 app.use("/hust/api/v1/events", require("./routes/events-route"));
 app.use("/hust/api/v1/gallery", require("./routes/gallery-route"));
