@@ -28,10 +28,6 @@ app.use(
   require("./routes/academic-calender-route")
 );
 app.use("/hust/api/v1/uploads", express.static(__dirname + "/uploads"));
-// app.use(
-//   "/hust/api/v1/uploads/staffProfile",
-//   express.static(__dirname + "/uploads")
-// );
 app.use(express.static("public"));
 setInterval(deleteUserIfDelayed, 60 * 1000); // Run every minute
 
