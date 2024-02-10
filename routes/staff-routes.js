@@ -14,6 +14,9 @@ const routes = express.Router();
 routes.post("/login", staffController.login);
 routes.post("/register", staffController.register);
 routes.get("/verify/:staffId/:uniqueString", staffController.verifyStaff);
+routes.get("/", staffController.getAllStaffs);
+routes.get("/:staffId", staffController.getSingleAllStaffs);
+routes.put("/update/:staffId", staffController.updateStaff);
 routes.put(
   "/edit-staff/:staffId",
   ProtectStaffRoute,

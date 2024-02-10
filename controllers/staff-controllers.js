@@ -3,14 +3,17 @@ const asyncHandler = require("express-async-handler");
 const bcrypt = require("bcryptjs");
 const { generateToken } = require("../utils/token");
 const { v4: uuidv4 } = require("uuid");
-const sendMail = require("../utils/email");
+const { sendMail, generateCode } = require("../utils/email");
+const { idCardContent } = require("../utils/HTMLContents");
+const pdf = require("html-pdf");
+
 const emailRegex = /^[a-zA-Z0-9._-]+@hust\.edu\.ng$/;
 
 const login = (req, res) => {
   const { email, password } = req.body;
 
   console.log(req.body);
-  const sql = "SELECT * FROM staff WHERE email = ?";
+  const sql = "SELECT * FROM staff WHERE email = ? AND verified = ?";
 
   if (!emailRegex.test(email)) {
     res
@@ -18,7 +21,7 @@ const login = (req, res) => {
       .json({ error: "Please use your official provided school email" });
     return;
   }
-  db.query(sql, [email], (error, response) => {
+  db.query(sql, [email, 1], (error, response) => {
     if (error) {
       res.status(500).json({ error: error });
     } else if (response.length > 0) {
@@ -73,6 +76,15 @@ const register = asyncHandler(async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPwd = await bcrypt.hash(password, salt);
     const IdCardStatus = 0;
+    const Approved = 0;
+    const staffId = "Not set";
+    const year = "2023";
+    const createdAt = "";
+    const bloodGroup = "Not set";
+    const currentPosition = "";
+    const qrcode = "";
+    const profilePicture = "";
+    const profilePictureFile = "";
 
     const userExistQuery =
       "SELECT * FROM staff WHERE email = ? OR username = ? ";
@@ -86,7 +98,7 @@ const register = asyncHandler(async (req, res) => {
           .json({ error: "Staff with this email or username already exists" });
       } else {
         const addUserQuery =
-          "INSERT INTO staff (firstname, lastname, username, email, password, unHashedPassword, createdAt) VALUES (?, ?, ?, ?, ?, ?, ? , ?)";
+          "INSERT INTO staff (firstname, lastname, username, email, profilePicture, profilePictureFile, password, unHashedPassword, IdCardStatus, Approved, staffId, qrcode, year, currentPosition, bloodGroup, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ? , ?, ?,?)";
 
         db.query(
           addUserQuery,
@@ -95,10 +107,19 @@ const register = asyncHandler(async (req, res) => {
             lastname,
             username,
             email,
+            profilePicture,
+            profilePictureFile,
             hashedPwd,
             password,
             IdCardStatus,
-            Date.now(),
+            Approved,
+            staffId,
+            qrcode,
+            year,
+            currentPosition,
+            bloodGroup,
+
+            createdAt,
           ],
           async (error, result) => {
             if (error) {
@@ -109,7 +130,7 @@ const register = asyncHandler(async (req, res) => {
                 if (error) {
                   res.status(500).json({ error: error });
                 } else if (response.length > 0) {
-                  const currentUrl = "http://localhost:3000/";
+                  const currentUrl = "https://staff.hust.edu.ng/";
                   const UniqueString = uuidv4() + response[0].id;
                   const salt2 = await bcrypt.genSalt(10);
                   const hashedString = await bcrypt.hash(UniqueString, salt2);
@@ -124,7 +145,7 @@ const register = asyncHandler(async (req, res) => {
                       response[0].id,
                       UniqueString,
                       Date.now(),
-                      Date.now() + 300000,
+                      Date.now() + 3000000,
                     ],
                     async (error, response) => {
                       if (error) {
@@ -144,7 +165,7 @@ const register = asyncHandler(async (req, res) => {
                             "DELETE FROM staff WHERE id = ?";
                           db.query(
                             deleteStaffQuery,
-                            [response[0].id],
+                            [response[0]?.id],
                             async (error, result) => {
                               if (error) {
                                 res.status(500).json({ error: error });
@@ -153,7 +174,7 @@ const register = asyncHandler(async (req, res) => {
                                   "DELETE FROM pendingStaff WHERE staffId = ?";
                                 db.query(
                                   deleteStaffTokenQuery,
-                                  [response[0].id],
+                                  [response[0]?.id],
                                   (err, result) => {
                                     if (err) {
                                       res.status(500).json({
@@ -370,6 +391,7 @@ const editStaff = asyncHandler(async (req, res) => {
     throw new Error("Not Authorized");
   }
   const updates = JSON.parse(req.body.updates);
+  console.log(updates);
 
   if (!Array.isArray(updates) || updates.length === 0) {
     res.status(400);
@@ -409,6 +431,108 @@ const editStaff = asyncHandler(async (req, res) => {
   });
 });
 
+const getAllStaffs = asyncHandler(async (req, res) => {
+  // const adminIdFromAuth = req.admin.id;
+  // const adminId = req.params.adminId;
+
+  // if (adminIdFromAuth != adminId) {
+  //   res.status(401);
+  //   throw new Error("Not Authorized");
+  // }
+
+  const query = "SELECT * FROM staff";
+
+  db.query(query, [], (error, result) => {
+    if (error) {
+      res.status(400).json("database error");
+    } else {
+      res.status(200).json(result);
+    }
+  });
+});
+
+const getSingleAllStaffs = asyncHandler(async (req, res) => {
+  const staffId = req.params.staffId;
+
+  const query = "SELECT * FROM staff Where id = ?";
+  db.query(query, [staffId], (error, result) => {
+    if (error) {
+      res.status(400).json("database error");
+    } else {
+      res.status(200).json(result);
+    }
+  });
+});
+
+const updateStaff = asyncHandler(async (req, res) => {
+  const id = req.params.staffId;
+  const date = new Date().toLocaleDateString("en-US");
+  const qrcode = req.body.qrcode;
+
+  generateCode(req.body.year, req.body.sex, (error, code) => {
+    if (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error generating code for staff." });
+    } else {
+      const sql = "SELECT * FROM staff Where id = ?";
+      db.query(sql, [id], async (error, result) => {
+        if (error) {
+          res.status(400).json("database error");
+        } else {
+          const email = result[0].email;
+
+          await sendMail(
+            email,
+            "ID CARD",
+            `<!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Email Template</title>
+            </head>
+            <body style="font-family: Arial, sans-serif; color: #333; background-color: #f5f5f5; margin: 0; padding: 0;">
+                <div style="max-width: 600px; margin: 20px auto; padding: 20px; background-color: #fff; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
+                    <h3 style="color: #5e0001;">Dear ${result[0].lastname},</h3>
+                    <p style="line-height: 1.6;">
+                        Your electronic ID card is ready. Please <a href="https://staffs.hust.edu.ng/login" style="color: #5e0001; text-decoration: none;">login to your staff portal</a> to view and download your ID card. Your hardcopy ID card is being processed and will be available shortly.
+                    </p>
+                    <div style="margin-top: 20px;">
+                        Best regards,<br>
+                        <b style="color: #5e0001;">HR HUST</b>
+                    </div>
+                </div>
+            </body>
+            </html>
+            `
+          )
+            .then(() => {
+              const query =
+                "UPDATE staff SET Approved = CASE WHEN Approved = 1 THEN 0 ELSE 1 END, staffId = ?, createdAt = ?, qrcode = ? WHERE id = ?"; // Removed extra comma after createdAt
+
+              const values = [code, date, qrcode, id];
+
+              db.query(query, values, (err, results) => {
+                if (err) {
+                  console.error("Error updating staff info: " + err);
+                  res
+                    .status(500)
+                    .json({ error: "Error updating staff info: " + err });
+                } else {
+                  console.log("Staff ID card approved successfully");
+                  res.json(results);
+                }
+              });
+            })
+            .catch((error) => {
+              res.status(400).json(error);
+            });
+        }
+      });
+    }
+  });
+});
+
 module.exports = {
   login,
   register,
@@ -416,4 +540,7 @@ module.exports = {
   deleteUserIfDelayed,
   changePassword,
   editStaff,
+  getAllStaffs,
+  getSingleAllStaffs,
+  updateStaff,
 };

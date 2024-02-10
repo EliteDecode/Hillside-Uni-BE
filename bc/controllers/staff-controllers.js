@@ -109,7 +109,7 @@ const register = asyncHandler(async (req, res) => {
                 if (error) {
                   res.status(500).json({ error: error });
                 } else if (response.length > 0) {
-                  const currentUrl = "http://localhost:3000/";
+                  const currentUrl = "https://staff.hust.edu.ng/";
                   const UniqueString = uuidv4() + response[0].id;
                   const salt2 = await bcrypt.genSalt(10);
                   const hashedString = await bcrypt.hash(UniqueString, salt2);
