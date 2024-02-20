@@ -5,16 +5,14 @@ const { generateToken } = require("../utils/token");
 const { v4: uuidv4 } = require("uuid");
 const { sendMail, generateCode } = require("../utils/email");
 const { idCardContent } = require("../utils/HTMLContents");
+
 const pdf = require("html-pdf");
 
 const emailRegex = /^[a-zA-Z0-9._-]+@hust\.edu\.ng$/;
 
 const login = (req, res) => {
   const { email, password } = req.body;
-
-  console.log(req.body);
   const sql = "SELECT * FROM staff WHERE email = ? AND verified = ?";
-
   if (!emailRegex.test(email)) {
     res
       .status(400)
@@ -80,11 +78,12 @@ const register = asyncHandler(async (req, res) => {
     const staffId = "Not set";
     const year = "2023";
     const createdAt = "";
+    const expiresAt = Date.now();
     const bloodGroup = "Not set";
     const currentPosition = "";
     const qrcode = "";
     const profilePicture = "";
-    const profilePictureFile = "";
+    const signature = "Not set";
 
     const userExistQuery =
       "SELECT * FROM staff WHERE email = ? OR username = ? ";
@@ -98,7 +97,7 @@ const register = asyncHandler(async (req, res) => {
           .json({ error: "Staff with this email or username already exists" });
       } else {
         const addUserQuery =
-          "INSERT INTO staff (firstname, lastname, username, email, profilePicture, profilePictureFile, password, unHashedPassword, IdCardStatus, Approved, staffId, qrcode, year, currentPosition, bloodGroup, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ? , ?, ?,?)";
+          "INSERT INTO staff (firstname, lastname, username, email, profilePicture, signature, password, unHashedPassword, IdCardStatus, Approved, staffId, qrcode, year, currentPosition, bloodGroup, createdAt, expiresAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ? , ?, ?,?, ?, ?, ?, ?)";
 
         db.query(
           addUserQuery,
@@ -108,7 +107,7 @@ const register = asyncHandler(async (req, res) => {
             username,
             email,
             profilePicture,
-            profilePictureFile,
+            signature,
             hashedPwd,
             password,
             IdCardStatus,
@@ -118,8 +117,8 @@ const register = asyncHandler(async (req, res) => {
             year,
             currentPosition,
             bloodGroup,
-
             createdAt,
+            expiresAt,
           ],
           async (error, result) => {
             if (error) {
@@ -130,7 +129,7 @@ const register = asyncHandler(async (req, res) => {
                 if (error) {
                   res.status(500).json({ error: error });
                 } else if (response.length > 0) {
-                  const currentUrl = "https://staff.hust.edu.ng/";
+                  const currentUrl = "http://localhost:3000/";
                   const UniqueString = uuidv4() + response[0].id;
                   const salt2 = await bcrypt.genSalt(10);
                   const hashedString = await bcrypt.hash(UniqueString, salt2);
@@ -204,9 +203,9 @@ const register = asyncHandler(async (req, res) => {
 });
 
 const deleteUserIfDelayed = asyncHandler(async (req, res) => {
-  const cutoff = Date.now() - 300000; // 5 minutes ago
+  const cutoff = Date.now() - 3000000; // 5 minutes ago
   db.query(
-    "DELETE FROM staff WHERE createdAt <= ? AND verified = ?",
+    "DELETE FROM staff WHERE expiresAt <= ? AND verified = ?",
     [cutoff, 0],
     (err, result) => {
       if (err) {
@@ -214,7 +213,7 @@ const deleteUserIfDelayed = asyncHandler(async (req, res) => {
       }
       if (result) {
         db.query(
-          "DELETE FROM pendingStaff WHERE createdAt <= ?",
+          "DELETE FROM pendingStaff WHERE expiresAt <= ?",
           [cutoff],
           (err, result) => {
             if (err) {
@@ -242,8 +241,9 @@ const verifyStaff = asyncHandler(async (req, res) => {
       }
 
       if (!pendingStaffResult || pendingStaffResult.length === 0) {
-        res.status(400);
-        res.json({ error: "Verification Failed, invalid verification link" });
+        res
+          .status(400)
+          .json({ error: "Verification Failed, invalid verification link" });
         return;
       }
 
@@ -391,7 +391,6 @@ const editStaff = asyncHandler(async (req, res) => {
     throw new Error("Not Authorized");
   }
   const updates = JSON.parse(req.body.updates);
-  console.log(updates);
 
   if (!Array.isArray(updates) || updates.length === 0) {
     res.status(400);
@@ -468,23 +467,19 @@ const updateStaff = asyncHandler(async (req, res) => {
   const id = req.params.staffId;
   const date = new Date().toLocaleDateString("en-US");
   const qrcode = req.body.qrcode;
+  const code = req.body.generatedStaffId;
 
-  generateCode(req.body.year, req.body.sex, (error, code) => {
+  const sql = "SELECT * FROM staff Where id = ?";
+  db.query(sql, [id], async (error, result) => {
     if (error) {
-      console.error(error);
-      res.status(500).json({ error: "Error generating code for staff." });
+      res.status(400).json("database error");
     } else {
-      const sql = "SELECT * FROM staff Where id = ?";
-      db.query(sql, [id], async (error, result) => {
-        if (error) {
-          res.status(400).json("database error");
-        } else {
-          const email = result[0].email;
+      const email = result[0].email;
 
-          await sendMail(
-            email,
-            "ID CARD",
-            `<!DOCTYPE html>
+      await sendMail(
+        email,
+        "ID CARD",
+        `<!DOCTYPE html>
             <html lang="en">
             <head>
                 <meta charset="UTF-8">
@@ -505,30 +500,28 @@ const updateStaff = asyncHandler(async (req, res) => {
             </body>
             </html>
             `
-          )
-            .then(() => {
-              const query =
-                "UPDATE staff SET Approved = CASE WHEN Approved = 1 THEN 0 ELSE 1 END, staffId = ?, createdAt = ?, qrcode = ? WHERE id = ?"; // Removed extra comma after createdAt
+      )
+        .then(() => {
+          const query =
+            "UPDATE staff SET Approved = CASE WHEN Approved = 1 THEN 0 ELSE 1 END, staffId = ?, createdAt = ?, qrcode = ? WHERE id = ?"; // Removed extra comma after createdAt
 
-              const values = [code, date, qrcode, id];
+          const values = [code, date, qrcode, id];
 
-              db.query(query, values, (err, results) => {
-                if (err) {
-                  console.error("Error updating staff info: " + err);
-                  res
-                    .status(500)
-                    .json({ error: "Error updating staff info: " + err });
-                } else {
-                  console.log("Staff ID card approved successfully");
-                  res.json(results);
-                }
-              });
-            })
-            .catch((error) => {
-              res.status(400).json(error);
-            });
-        }
-      });
+          db.query(query, values, (err, results) => {
+            if (err) {
+              console.error("Error updating staff info: " + err);
+              res
+                .status(500)
+                .json({ error: "Error updating staff info: " + err });
+            } else {
+              console.log("Staff ID card approved successfully");
+              res.json(results);
+            }
+          });
+        })
+        .catch((error) => {
+          res.status(400).json(error);
+        });
     }
   });
 });

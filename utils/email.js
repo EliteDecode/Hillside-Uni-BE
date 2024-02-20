@@ -68,13 +68,4 @@ function generateCode(year, sex, callback) {
   });
 }
 
-// Example usage
-generateCode("2023-10-23", "Female", (error, code) => {
-  if (error) {
-    console.error(error);
-  } else {
-    console.log(code);
-  }
-});
-
 module.exports = { sendMail, sendMailMessage, generateCode };

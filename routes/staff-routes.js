@@ -24,10 +24,4 @@ routes.put(
   staffController.editStaff
 );
 
-// routes.put(
-//   "/update-single-admin/:id",
-//   ProtectRoute,
-//   adminController.editSingleAdmin
-// );
-
 module.exports = routes;
